@@ -3,7 +3,6 @@ package com.example.trivia;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
@@ -13,15 +12,16 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.ImageButton;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.trivia.controller.AppController;
 import com.example.trivia.data.AnswerListAsyncResponse;
 import com.example.trivia.data.QuestionBank;
 import com.example.trivia.model.Question;
+import com.example.trivia.model.Score;
+import com.example.trivia.util.Prefs;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,10 +38,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button falseButton;
     private ImageButton nextButton;
     private ImageButton previousButton;
+    private TextView highestScoreTextView;
     private int currentQuestionIndex = 0;
     private List<Question> questionList;
 
     private String updatedScore;
+    private int scorecounter = 0;
+    private Score score;
+    private Prefs prefs;
 
 
     @Override
@@ -56,11 +60,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         questionTextView = findViewById(R.id.questionTextView);
         questionCounterTextView = findViewById(R.id.counterText);
         scoreTextView = findViewById(R.id.scoreText);
+        highestScoreTextView = findViewById(R.id.highestScoreText);
 
         nextButton.setOnClickListener(this);
         previousButton.setOnClickListener(this);
         trueButton.setOnClickListener(this);
         falseButton.setOnClickListener(this);
+
+        score = new Score();
+        prefs = new Prefs(MainActivity.this);
+
+        scoreTextView.setText(MessageFormat.format("Current Score: {0}", Integer.toString(score.getScore())));
+        highestScoreTextView.setText(MessageFormat.format("Highest Score: {0}",Integer.toString(prefs.getHighestScore())));
+
 
 
         //The below style of onClickListener is very lengthy to be written, so we used different way by implementing the View.OnClickListener interface
@@ -79,7 +91,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 questionCounterTextView.setText(currentQuestionIndex + "/" + questionArrayList.size());
 
-//                Log.d("Hello", "onCreate: "+ questionArrayList);
+                Log.d("Hello", "onCreate: "+ questionArrayList);
 
             }
         });
@@ -126,7 +138,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //and the implementation of the processedFinished method we are displaying the result
 
 
-//      Now if we want to show log.d inside of onCreate ten we can do below code:
+//      Now if we want to show log.d inside of onCreate without using AnswerListAsyncResponse, then we can do below code inside of onCreate after calling getQuestions method:
 
 
 //        new java.util.Timer().schedule(
@@ -139,6 +151,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                },
 //                94
 //        );
+
+        //because in my internet connect the async task of loading questions in the for loop in QuestionBank class has taken 94 milliseconds.
+        //hence we have waited or paused our onCreate activity to executed the printing of questionList so that once we get all the
+        //questions in 94 milliseconds, we can print easily the full list.
 
 
 
@@ -171,29 +187,60 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void checkAnswer(boolean userAnswerChoice) {
 
         boolean correctAnswer = questionList.get(currentQuestionIndex).isAnswerTrue();
-        disableButtons();
-
+//        disableButtons();
+ 
         int toastMessageId = 0;
         if(correctAnswer == userAnswerChoice)
         {
-            updateScore(1);
+//            updateScore(1);
             fadeView();
             toastMessageId = R.string.correctAnswer;
+            addPoints();
 
         }
         else
         {
-            updateScore(0);
+//            updateScore(0);
             shakeAnimation();
             toastMessageId = R.string.wrongAnswer;
+            deductPoints();
 
         }
 
         Toast.makeText(MainActivity.this, toastMessageId, Toast.LENGTH_SHORT).show();
     }
 
+    private void addPoints()
+    {
+        scorecounter+=100;
+        score.setScore(scorecounter);
+        scoreTextView.setText(MessageFormat.format("Current Score: {0}", Integer.toString(score.getScore())));
+        prefs.saveHighestScore(scorecounter);
+        highestScoreTextView.setText(MessageFormat.format("Highest Score: {0}",Integer.toString(prefs.getHighestScore())));
+
+
+    }
+
+    private void deductPoints()
+    {
+        scorecounter-=100;
+        if(scorecounter>0)
+        {
+            score.setScore(scorecounter);
+        }
+        else
+        {
+            scorecounter=0;
+            score.setScore(scorecounter);
+        }
+        scoreTextView.setText(MessageFormat.format("Current Score: {0}", Integer.toString(score.getScore())));
+        prefs.saveHighestScore(scorecounter);
+        highestScoreTextView.setText(MessageFormat.format("Highest Score: {0}",Integer.toString(prefs.getHighestScore())));
+
+    }
+
     private void updateQuestion() {
-        enableButtons();
+//        enableButtons();
         String question = questionList.get(currentQuestionIndex).getAnswer();
         questionTextView.setText(question);
         questionCounterTextView.setText(currentQuestionIndex + "/" + questionList.size());
@@ -204,7 +251,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void shakeAnimation()
     {
-        Animation shake = AnimationUtils.loadAnimation(MainActivity.this, R.anim.shake_animation);
+        Animation shake = AnimationUtils.loadAnimation(MainActivity.this, R.anim.shake_animation);  //load animation
 
         final CardView cardView = findViewById(R.id.cardView);
 
@@ -261,42 +308,68 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
     }
 
-    private void updateScore(int flag)
-    {
-        int currentScore = Integer.parseInt(scoreTextView.getText().toString().replaceAll("[\\D]", "")); //Replace all non-digit with blank: the remaining string contains only digits.
-        updatedScore = Integer.toString(currentScore);
-        if(flag == 1) {
-            updatedScore = Integer.toString(currentScore + 100);
-            scoreTextView.setText(String.format("Score: %s", updatedScore));
-        }
-        else
-        {
-            if(currentScore>0) {
-                updatedScore = Integer.toString(currentScore - 100);
-                scoreTextView.setText(String.format("Score: %s", updatedScore));
-            }
-        }
-
-//        SharedPreferences sharedPreferences =getSharedPreferences(SAVE_STATE,MODE_PRIVATE);
+//    private void updateScore(int flag)
+//    {
+//        int currentScore = Integer.parseInt(scoreTextView.getText().toString().replaceAll("[\\D]", "")); //Replace all non-digit with blank: the remaining string contains only digits.
+//        updatedScore = Integer.toString(currentScore);
+//        if(flag == 1) {
+//            updatedScore = Integer.toString(currentScore + 100);
+//            scoreTextView.setText(String.format("Score: %s", updatedScore));
+//        }
+//        else
+//        {
+//            if(currentScore>0) {
+//                updatedScore = Integer.toString(currentScore - 100);
+//                scoreTextView.setText(String.format("Score: %s", updatedScore));
+//            }
+//        }
 //
-//        SharedPreferences.Editor editor =sharedPreferences.edit();
+////        SharedPreferences sharedPreferences =getSharedPreferences(SAVE_STATE,MODE_PRIVATE);
+////
+////        SharedPreferences.Editor editor =sharedPreferences.edit();
+////
+////        editor.putString("score", updatedScore);
+////        editor.apply();
 //
-//        editor.putString("score", updatedScore);
-//        editor.apply();
+//    }
 
+//    private void  disableButtons()
+//    {
+//        trueButton.setEnabled(false);
+//        falseButton.setEnabled(false);
+//    }
+//
+//    private void enableButtons()
+//    {
+//        trueButton.setEnabled(true);
+//        falseButton.setEnabled(true);
+//    }
+
+
+    @Override
+    protected void onPause() {
+        prefs.saveHighestScore(score.getScore());
+        super.onPause();
     }
 
-    private void  disableButtons()
-    {
-        trueButton.setEnabled(false);
-        falseButton.setEnabled(false);
-    }
-
-    private void enableButtons()
-    {
-        trueButton.setEnabled(true);
-        falseButton.setEnabled(true);
-    }
-
-
+//    Usage of Java super Keyword
+//super can be used to refer immediate parent class instance variable.
+//super can be used to invoke immediate parent class method.
+//super() can be used to invoke immediate parent class constructor.
+//example:-
+//class Animal{
+//String color="white";
+//}
+//class Dog extends Animal{
+//String color="black";
+//void printColor(){
+//System.out.println(color);//prints color of Dog class
+//System.out.println(super.color);//prints color of Animal class
+//}
+//}
+//class TestSuper1{
+//public static void main(String args[]){
+//Dog d=new Dog();
+//d.printColor();
+//}}
 }

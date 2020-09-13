@@ -16,6 +16,11 @@ import java.util.ArrayList;
 //There are some rules that need to be followed by Interface.
 //
 //All interface Methods are implicitly public and abstract. Even if you use keyword it will not create the problem as you can see in the second Method declaration. (Before Java 8)
+//Abstract Method Definition:
+//Sometimes, we require just method declaration in super-classes. This can be achieve by specifying the abstract type modifier. These methods are sometimes referred to as subclasser responsibility because they have no implementation specified in the super-class. Thus, a subclass must override them to provide method definition. To declare an abstract method, use this general form:
+//abstract type method-name(parameter-list);
+
+
 //Interfaces can declare only Constant. Instance variables are not allowed. This means all variables inside the Interface must be public, static, final. Variables inside Interface are implicitly public static final.
 //Interface Methods cannot be static. (Before Java 8)
 //Interface Methods cannot be final, strictfp or native.
